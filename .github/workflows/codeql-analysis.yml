@@ -1,7 +1,7 @@
 name: "CodeQL Taint Tracking"
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
     # opzionale: puoi limitare a certe directory
     paths:
