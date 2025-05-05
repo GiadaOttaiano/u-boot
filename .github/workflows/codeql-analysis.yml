@@ -39,9 +39,11 @@ jobs:
 
     - name: Build U-Boot
       run: |
-        export HOSTCFLAGS="-DYYLTYPE_IS_DECLARED"
         make sandbox_defconfig
-        make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS"
+        touch scripts/dtc/dtc
+        chmod +x scripts/dtc/dtc
+        make -j$(nproc) NO_DTC=1
+
 
     - name: Perform CodeQL analysis
       uses: github/codeql-action/analyze@v3
