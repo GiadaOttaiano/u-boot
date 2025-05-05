@@ -1,0 +1,48 @@
+name: "CodeQL Taint Tracking"
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    # opzionale: puoi limitare a certe directory
+    paths:
+      - '.github/codeql/custom-queries/**'
+      - 'src/**'
+
+jobs:
+  codeql:
+    name: Analisi CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0        # necessario per analisi DIFF
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        # Indica dove mettere le tue query personalizzate:
+        queries: ./.github/codeql/custom-queries
+
+    - name: Build U-Boot
+      # devi adattare il comando di build per U‑Boot:
+      run: |
+        make defconfig
+        make all
+
+    - name: Perform CodeQL analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: '/cpp/custom'   # opzionale: raggruppa i risultati
+
