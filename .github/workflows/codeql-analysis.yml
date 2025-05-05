@@ -43,29 +43,40 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libsdl1.2-dev bison flex
         
-    # Costruiamo un ambiente minimo per permettere l'analisi senza compilare il progetto completo
-    - name: Build minimal environment for analysis
+    # Fix specifico per il problema con dtc
+    - name: Fix DTC yylloc issue
       run: |
-        # Configura sandbox
+        # Modifica il file dtc-lexer.l per correggere il conflitto yylloc
+        echo "Fixing yylloc conflict in DTC lexer"
+        if [ -f "scripts/dtc/dtc-lexer.l" ]; then
+          # Modifica il sorgente
+          sed -i 's/YYLTYPE yylloc/extern YYLTYPE yylloc/g' scripts/dtc/dtc-lexer.l
+          echo "Modified dtc-lexer.l"
+          cat scripts/dtc/dtc-lexer.l | grep -A 1 -B 1 yylloc
+        fi
+        
+        # Assicuriamoci che LEX non venga usato (useremo i file già generati)
+        mkdir -p scripts/dtc/
+        touch scripts/dtc/dtc-lexer.lex.c
+        
+        # Assicuriamoci che il file dtc-lexer.lex.c sia statico
+        if [ -f "scripts/dtc/dtc-lexer.lex.c" ]; then
+          sed -i 's/YYLTYPE yylloc/extern YYLTYPE yylloc/g' scripts/dtc/dtc-lexer.lex.c
+          echo "Modified dtc-lexer.lex.c"
+          cat scripts/dtc/dtc-lexer.lex.c | grep -A 1 -B 1 yylloc || true
+        fi
+
+    # Configurazione e build di U-Boot
+    - name: Build U-Boot
+      run: |
+        # Prima configura sandbox
         make sandbox_defconfig
         
-        # Prepariamo i file generati che servono per l'analisi CodeQL
-        make -j$(nproc) include/autoconf.mk include/generated/generic-asm-offsets.h
+        # Compila con modalità a prova di errore
+        MAKEFLAGS="HOSTCC=gcc -DUSE_HOSTCC" make -j$(nproc) -k || true
         
-        # Tocchiamo i file necessari per evitare che il sistema di build tenti di ricostruirli
-        touch scripts/dtc/dtc
-        chmod +x scripts/dtc/dtc
-        
-        # Creiamo un file .o fake per prevenire la necessità di ricompilare
-        for f in scripts/dtc/*.o; do
-          [ -f "$f" ] || touch "$f"
-        done
-        
-        # Esportiamo variabili di configurazione
-        echo "CONFIG_DEFAULT_DEVICE_TREE=\"sandbox\"" >> include/config/auto.conf
-        
-        # Compiliamo solo alcuni file di base sufficienti per l'analisi
-        find . -name "*.c" | grep -v "scripts/dtc" | head -n 100 | xargs -n1 gcc -c -o /dev/null || true
+        # Se la compilazione fallisce comunque, almeno alcuni file avranno 
+        # attraversato il processo di compilazione per l'analisi
 
     - name: Perform CodeQL analysis
       uses: github/codeql-action/analyze@v3
