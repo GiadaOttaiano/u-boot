@@ -37,11 +37,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libsdl1.2-dev device-tree-compiler libfdt-dev bison flex
 
-    - name: Build U-Boot (skip dtc)
+    - name: Build U-Boot (skip broken dtc build)
       run: |
         make sandbox_defconfig
+        # Disattiva dtc creando un eseguibile finto
         mkdir -p scripts/dtc
-        echo -e "#!/bin/sh\nexit 0" > scripts/dtc/dtc
+        echo -e '#!/bin/sh\nexit 0' > scripts/dtc/dtc
         chmod +x scripts/dtc/dtc
         make -j$(nproc) NO_DTC=1
 
