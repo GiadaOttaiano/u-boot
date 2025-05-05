@@ -1,12 +1,10 @@
 name: "CodeQL Taint Tracking"
+
 on:
   push:
     branches: [ master ]
   pull_request:
-    # opzionale: puoi limitare a certe directory
-    paths:
-      - '.github/codeql/custom-queries/**'
-      - 'src/**'
+    branches: [ master ]
 
 jobs:
   codeql:
@@ -26,17 +24,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0        # necessario per analisi DIFF
+        fetch-depth: 0
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        # Indica dove mettere le tue query personalizzate:
         queries: ./.github/codeql/custom-queries
 
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev device-tree-compiler libfdt-dev
+
     - name: Build U-Boot
-      # devi adattare il comando di build per U‑Boot:
       run: |
         make defconfig
         make all
@@ -44,5 +45,4 @@ jobs:
     - name: Perform CodeQL analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: '/cpp/custom'   # opzionale: raggruppa i risultati
-
+        category: '/cpp/custom'
