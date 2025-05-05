@@ -26,27 +26,42 @@ jobs:
       with:
         fetch-depth: 0
 
+    # Assicuriamoci che la directory delle query esista
+    - name: Ensure custom queries directory
+      run: |
+        mkdir -p .github/codeql/custom-queries
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         queries: ./.github/codeql/custom-queries
+        # Imposta il livello di debug per vedere più dettagli nel caso di problemi
+        debug: true
 
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsdl1.2-dev device-tree-compiler libfdt-dev bison flex
-
-    - name: Build U-Boot (skip broken dtc build)
+        sudo apt-get install -y libsdl1.2-dev bison flex
+        
+    # Modifica per evitare la compilazione di dtc
+    - name: Build U-Boot
       run: |
+        # Prima configura sandbox
         make sandbox_defconfig
-        # Disattiva dtc creando un eseguibile finto
+        
+        # Modifica il Makefile per saltare la compilazione di dtc
+        sed -i 's/$(Q)$(MAKE) $(build)=scripts\/dtc/#$(Q)$(MAKE) $(build)=scripts\/dtc/' Makefile
+        
+        # Crea uno script dtc finto
         mkdir -p scripts/dtc
         echo -e '#!/bin/sh\nexit 0' > scripts/dtc/dtc
         chmod +x scripts/dtc/dtc
-        make -j$(nproc) NO_DTC=1
+        
+        # Esegui la build
+        make -j$(nproc)
 
     - name: Perform CodeQL analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: '/cpp/custom'
+        category: '/language:${{ matrix.language }}'
