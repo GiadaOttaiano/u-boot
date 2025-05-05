@@ -37,13 +37,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libsdl1.2-dev device-tree-compiler libfdt-dev bison flex
 
-    - name: Build U-Boot
+    - name: Build U-Boot (skip dtc)
       run: |
         make sandbox_defconfig
-        touch scripts/dtc/dtc
+        mkdir -p scripts/dtc
+        echo -e "#!/bin/sh\nexit 0" > scripts/dtc/dtc
         chmod +x scripts/dtc/dtc
         make -j$(nproc) NO_DTC=1
-
 
     - name: Perform CodeQL analysis
       uses: github/codeql-action/analyze@v3
